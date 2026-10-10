@@ -1,22 +1,14 @@
 'use strict';
-const assert = require('node:assert/strict');
-const {explain} = require('./decision-reason.js');
-const base = {
-  actual_transaction: 'NONE', realized_profit_inr: 'NOT_MEASURED',
-  verdict: 'SKIP_NOT_PROFITABLE_ENOUGH', gross_spread_usd: '-52.3272',
-  estimated_net_usd: '-56.2423', min_profit_usd: '5.0000'
-};
-const test = (name, overrides, expected) => {
-  const observed = explain({...base, ...overrides});
-  assert.equal(observed, expected, name);
-  console.log('PASS', name);
-};
-test('negative gross spread', {}, 'Rejected: route loses $52.33 before costs');
-test('gas and fees erase positive gross', {gross_spread_usd:'1.10', estimated_net_usd:'-0.30'}, 'Rejected: fees and risk buffer erase spread (−$0.30 net)');
-test('positive but below minimum', {gross_spread_usd:'9',estimated_net_usd:'3.60'}, 'Rejected: +$3.60 net ≤ +$5.00 minimum');
-test('positive paper candidate', {verdict:'HYPOTHETICAL_CANDIDATE_NOT_EXECUTED',gross_spread_usd:'20',estimated_net_usd:'8.40'}, 'Paper candidate: +$8.40 net > +$5.00 minimum; not traded');
-test('no liquidity', {verdict:'SKIP_NO_LIQUIDITY'}, 'Rejected: insufficient liquidity for this route');
-test('reject malformed numeric', {estimated_net_usd:'NaN'}, 'Unavailable: incomplete or invalid price/fee estimate');
-test('reject contradictory paper candidate', {verdict:'HYPOTHETICAL_CANDIDATE_NOT_EXECUTED', estimated_net_usd:'-1'}, 'Unavailable: candidate conflicts with profit threshold');
-test('reject real transaction', {actual_transaction:'0xbeef'}, 'Unavailable: not a verified paper-only observation');
-test('reject spoofed realized profit', {realized_profit_inr:'500'}, 'Unavailable: not a verified paper-only observation');
+const assert=require('node:assert/strict');
+const {explain}=require('./decision-reason.js');
+const base={actual_transaction:'NONE',realized_profit_inr:'NOT_MEASURED',verdict:'SKIP_NOT_PROFITABLE_ENOUGH',gross_spread_usd:'-52.3272',estimated_net_usd:'-56.2422',min_profit_usd:'5.0000',estimated_flash_fee_usd:'0.9000',estimated_gas_usd:'0.0150',extra_risk_buffer_usd:'3.0000'};
+const t=(n,over,expected)=>{assert.equal(explain({...base,...over}),expected,n);console.log('PASS',n);};
+t('negative swap',{},'REJECTED — swaps lose $52.33 even before $3.92 fees/buffer.');
+t('positive gross but negative net',{gross_spread_usd:'1.10',estimated_net_usd:'-2.815'},'REJECTED — +$1.10 spread is smaller than $3.92 costs; net −$2.81.');
+t('positive but too low',{gross_spread_usd:'7.515',estimated_net_usd:'3.60'},'REJECTED — +$3.60 net is below required +$5.00 after costs.');
+t('candidate',{verdict:'HYPOTHETICAL_CANDIDATE_NOT_EXECUTED',gross_spread_usd:'12.315',estimated_net_usd:'8.40'},'PAPER PASS — +$8.40 estimated net > +$5.00 minimum; execution untested.');
+t('no liquidity',{verdict:'SKIP_NO_LIQUIDITY'},'REJECTED — both trading pools did not have usable liquidity.');
+t('malformed estimate',{estimated_net_usd:'bad'},'NO DECISION — some prices or fee estimates are invalid.');
+t('invalid candidate',{verdict:'HYPOTHETICAL_CANDIDATE_NOT_EXECUTED',estimated_net_usd:'-1'},'NO DECISION — reported candidate fails the profit check.');
+t('real tx injected',{actual_transaction:'0xbeef'},'NO DECISION — this is not a valid paper-only observation.');
+t('fake realized profit',{realized_profit_inr:'500'},'NO DECISION — this is not a valid paper-only observation.');
