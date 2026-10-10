@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "mode": "READ_ONLY_NOT_EXECUTED",
+  "summary": {
+    "mode": "READ_ONLY_NOT_EXECUTED",
+    "real_trades_executed": 0,
+    "realized_pnl_inr": "NOT_MEASURED",
+    "total_hypothetical_route_quotes": 0,
+    "hypothetical_candidates_not_executed": 0,
+    "network_route_quotes": {
+      "polygon": 0,
+      "bsc": 0
+    },
+    "latest_observation_utc": null,
+    "report_generated_utc": "2026-10-10T09:00:00+00:00",
+    "experiment_start_utc": "2026-10-10T09:00:00+00:00",
+    "experiment_end_utc": "2026-10-17T09:00:00+00:00",
+    "warning": "Initial empty read-only report. Waiting for cloud observations; fees, gas and INR FX are estimates only."
+  },
+  "observations": []
+}
