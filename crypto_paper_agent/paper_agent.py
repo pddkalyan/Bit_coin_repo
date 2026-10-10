@@ -168,12 +168,31 @@ def native_price_stable(pools: list[Pool], stable_decimals: int) -> Decimal:
             (Decimal(best.reserve_wrapped) / Decimal(10**18)))
 
 
+def unit_quote(buy: Pool, sell: Pool, stable_decimals: int) -> tuple[str, str]:
+    """Quote buying/selling exactly 1 wrapped native token against sampled V2 reserves.
+
+    Buy uses exact-output required input. Sell uses exact-input output.
+    Pool fees/price impact included; gas/flash loan charges excluded.
+    """
+    unit = 10 ** 18
+    if buy.reserve_wrapped <= unit:
+        return '', ''
+    denominator = (buy.reserve_wrapped - unit) * (10000 - buy.fee_bps)
+    if denominator <= 0:
+        return '', ''
+    stable_for_buy = (buy.reserve_stable * unit * 10000) // denominator + 1
+    stable_from_sell = amount_out(unit, sell.reserve_wrapped, sell.reserve_stable, sell.fee_bps)
+    decimals = Decimal(10 ** stable_decimals)
+    return f'{Decimal(stable_for_buy)/decimals:.8f}', f'{Decimal(stable_from_sell)/decimals:.8f}'
+
+
 def measure_candidate(*, chain: str, buy: Pool, sell: Pool, amount_stable_units: int,
                       stable_decimals: int, native_usd: Decimal, gas_wei: int,
                       gas_units: int, flash_premium_bps: int, extra_buffer_bps: int,
                       min_profit_bps: int, min_profit_usd: Decimal, usd_inr: Decimal,
-                      block_number: int, now: str, source: str) -> dict:
+                      block_number: int, now: str, source: str, unit_symbol: str = 'NATIVE') -> dict:
     wrapped, stable_back = quote_direction(buy, sell, amount_stable_units)
+    unit_buy, unit_sell = unit_quote(buy, sell, stable_decimals)
     unit = Decimal(10 ** stable_decimals)
     borrowed_usd = Decimal(amount_stable_units) / unit
     proceeds_usd = Decimal(stable_back) / unit
@@ -192,6 +211,7 @@ def measure_candidate(*, chain: str, buy: Pool, sell: Pool, amount_stable_units:
     return {
         'timestamp_utc': now, 'network': chain, 'source': source,
         'block': block_number, 'buy_from': buy.name, 'sell_to': sell.name,
+        'unit_symbol': unit_symbol, 'unit_buy_usd': unit_buy, 'unit_sell_usd': unit_sell,
         'virtual_flash_usd': f'{borrowed_usd:.2f}',
         'gross_spread_usd': f'{gross_usd:.4f}',
         'estimated_flash_fee_usd': f'{loan_fee_usd:.4f}',
@@ -266,7 +286,7 @@ def run(args) -> list[dict]:
                 gas_units=args.gas_units, flash_premium_bps=args.flash_premium_bps,
                 extra_buffer_bps=args.extra_buffer_bps, min_profit_bps=args.min_profit_bps,
                 min_profit_usd=Decimal(args.min_profit_usd), usd_inr=usd_inr,
-                block_number=block, now=now, source=source,
+                block_number=block, now=now, source=source, unit_symbol=config['native_symbol'],
             ))
     write_csv(rows, Path(args.csv))
     print(f'[{chain}] block={block}, fee quote={gas_price_wei / 1e9:.4f} gwei, '

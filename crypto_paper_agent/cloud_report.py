@@ -53,7 +53,7 @@ def merge(previous: Path, current: Path, dest: Path, status: dict|None=None):
     rows = sorted(by_key.values(), key=lambda r:(r['timestamp_utc'],r['network'],r['buy_from'],r['sell_to']))
     dest.mkdir(parents=True, exist_ok=True)
     columns = ['timestamp_utc','network','source','block','buy_from','sell_to','virtual_flash_usd',
-               'gross_spread_usd','estimated_flash_fee_usd','estimated_gas_usd','extra_risk_buffer_usd',
+               'unit_symbol','unit_buy_usd','unit_sell_usd','gross_spread_usd','estimated_flash_fee_usd','estimated_gas_usd','extra_risk_buffer_usd',
                'estimated_net_usd','estimated_net_inr','min_profit_usd','verdict','actual_transaction','realized_profit_inr']
     with (dest/'observations.csv').open('w',newline='',encoding='utf-8') as f:
         w=csv.DictWriter(f,fieldnames=columns,extrasaction='ignore'); w.writeheader(); w.writerows(rows)
