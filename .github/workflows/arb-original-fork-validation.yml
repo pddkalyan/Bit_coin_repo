@@ -56,6 +56,12 @@ jobs:
         env:
           MAINNET_RPC: https://ethereum-rpc.publicnode.com
         run: forge test --root fork_validation --match-contract ArbitrageExecutorIndependentForkTest --match-test test_FORK -vvv --gas-report
+      - name: Diagnose Aave DAO listed Lido and EtherFi pool premiums and whale cycles
+        id: alternate
+        continue-on-error: true
+        env:
+          MAINNET_RPC: https://ethereum-rpc.publicnode.com
+        run: forge test --root fork_validation --match-contract AaveVerifiedMarketsCandidate --match-test test_CANDIDATE -vvv --gas-report
       - name: Preserve failure result and report scope
         if: always()
         env:
