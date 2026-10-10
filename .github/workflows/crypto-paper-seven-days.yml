@@ -53,6 +53,8 @@ jobs:
         shell: bash
         run: |
           node --check docs/dashboard.js
+          node --check docs/decision-reason.js
+          node docs/decision-reason.test.cjs
           python3 - <<'PY'
           from pathlib import Path
           src=Path('docs/dashboard.js').read_text()
