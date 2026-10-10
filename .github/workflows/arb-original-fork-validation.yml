@@ -62,6 +62,12 @@ jobs:
         env:
           MAINNET_RPC: https://ethereum-rpc.publicnode.com
         run: forge test --root fork_validation --match-contract AaveVerifiedMarketsCandidate --match-test test_CANDIDATE -vvv --gas-report
+      - name: Test corrected completion receipts, organic rejection, and after-gas estimate
+        id: corrected
+        continue-on-error: true
+        env:
+          MAINNET_RPC: https://ethereum-rpc.publicnode.com
+        run: forge test --root fork_validation --match-contract CorrectedExecutorForkTests --match-test test_PATCH -vvv --gas-report
       - name: Preserve failure result and report scope
         if: always()
         env:
