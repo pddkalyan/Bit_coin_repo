@@ -1,0 +1,11 @@
+--- ORIGINAL_ArbitrageExecutor.sol
++++ ArbitrageExecutor_HARDENED_CANDIDATE.sol
+@@ callback after _approveRepaymentAndGetProfit(...) @@
+-        _resetLoanState();
+-
+-        emit FlashCompleted(asset, amount, premium, profit, activeRequestHash);
++        // Keep the original request ID in the receipt before resetting loan state.
++        bytes32 completedRequestHash = activeRequestHash;
++        _resetLoanState();
++
++        emit FlashCompleted(asset, amount, premium, profit, completedRequestHash);

@@ -61,10 +61,11 @@ jobs:
           node --check docs/decision-reason.test.cjs
           python3 - <<'PY'
           from pathlib import Path
-          src=Path('docs/dashboard.js').read_text()
-          for method in ('eth_sendTransaction','eth_sendRawTransaction','personal_sign','eth_sign','wallet_sendCalls','wallet_requestPermissions'):
-              assert method not in src, f'Unsafe wallet API in browser source: {method}'
-          assert 'eth_requestAccounts' in src
+          for src_path in (Path('docs/dashboard.js'),Path('docs/decision-reason.js'),Path('docs/paper-planner.js')):
+              src=src_path.read_text()
+              for method in ('eth_sendTransaction','eth_sendRawTransaction','personal_sign','eth_sign','wallet_sendCalls','wallet_requestPermissions','eth_signTypedData'):
+                  assert method not in src, f'Unsafe wallet API in {src_path}: {method}'
+          assert 'eth_requestAccounts' in Path('docs/dashboard.js').read_text()
           print('View-only wallet API check passed')
           PY
 
