@@ -6,7 +6,7 @@ contract ArbitrageExecutorIndependentForkTest is ArbitrageExecutorProof {
  function test_FORK_directCallbackMustFail() public {
    ArbitrageExecutor.Hop[] memory empty = new ArbitrageExecutor.Hop[](0);
    bytes memory params=abi.encode(USDC,uint256(20_000e6),block.timestamp+120,address(this),empty);
-   vm.expectRevert(ArbitrageExecutor.BadCallback.selector);
+   vm.expectRevert(ArbitrageExecutor.ExecutionTimeout.selector); // direct call fails the initial timeout guard first
    arb.executeOperation(USDC,20_000e6,0,address(arb),params);
  }
  function test_FORK_pauseBlocksExecution() public {

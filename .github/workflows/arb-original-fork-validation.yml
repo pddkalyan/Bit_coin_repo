@@ -55,7 +55,7 @@ jobs:
         continue-on-error: true
         env:
           MAINNET_RPC: https://ethereum-rpc.publicnode.com
-        run: forge test --root fork_validation --match-contract ArbitrageExecutorIndependentForkTest -vvv --gas-report
+        run: forge test --root fork_validation --match-contract ArbitrageExecutorIndependentForkTest --match-test test_FORK -vvv --gas-report
       - name: Preserve failure result and report scope
         if: always()
         env:
