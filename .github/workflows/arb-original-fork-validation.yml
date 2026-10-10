@@ -1,0 +1,41 @@
+name: Original ArbitrageExecutor mainnet fork validation — NO FUNDS
+on:
+  workflow_dispatch:
+  push:
+    branches: [fork-validation-20261010]
+    paths: ['fork_validation/**', '.github/workflows/arb-original-fork-validation.yml']
+permissions:
+  contents: read
+jobs:
+  original-fork:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Confirm source and proofs
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum fork_validation/test/ArbitrageExecutorOriginal.t.sol
+          test "$(grep -c 'function test_PROOF' fork_validation/test/ArbitrageExecutorOriginal.t.sol)" -eq 3
+          test "$(grep -c 'function test_T' fork_validation/test/ArbitrageExecutorOriginal.t.sol)" -eq 4
+      - name: Compile unmodified production Solidity and original proof harness
+        run: forge build --root fork_validation -vv
+      - name: Execute original and supplemental tests on Ethereum mainnet archive fork
+        env:
+          MAINNET_RPC: https://ethereum-rpc.publicnode.com
+        run: |
+          set -euo pipefail
+          forge test --root fork_validation --match-contract ArbitrageExecutorProof -vvv --gas-report
+          forge test --root fork_validation --match-contract ArbitrageExecutorIndependentForkTest -vvv --gas-report
+      - name: Test scope reminder
+        if: always()
+        run: |
+          echo "NO transactions on the actual Ethereum blockchain."
+          echo "Three positive proof tests manufacture a price dislocation in the fork."
+          echo "A passing fork test DOES NOT establish real net-after-gas profit."
