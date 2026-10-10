@@ -1,0 +1,95 @@
+name: Crypto paper monitor — 7 days (NO TRADING)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # UTC, four read-only observations each day. GitHub schedule is best-effort.
+    - cron: '17 0,6,12,18 * * *'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: crypto-paper-seven-days-readonly
+  cancel-in-progress: false
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify the seven-day UTC window
+        id: window
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from datetime import datetime, timezone
+          import os
+          now = datetime.now(timezone.utc)
+          beginning = datetime.fromisoformat('2026-10-10T09:00:00+00:00')
+          ending = datetime.fromisoformat('2026-10-17T09:00:00+00:00')
+          active = beginning <= now < ending
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              print('active=' + str(active).lower(), file=f)
+          print(f'UTC now={now.isoformat()}, start={beginning}, end={ending}; active={active}')
+          PY
+
+      - name: Checkout read-only source
+        if: steps.window.outputs.active == 'true'
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Safety and calculation tests
+        if: steps.window.outputs.active == 'true'
+        run: python3 -m unittest discover -s crypto_paper_agent -p 'test_*.py' -v
+
+      - name: Read public Polygon and BNB pool data (no trades)
+        if: steps.window.outputs.active == 'true'
+        shell: bash
+        run: |
+          mkdir -p reports
+          for chain in polygon bsc; do
+            set +e
+            python3 crypto_paper_agent/paper_agent.py --network "$chain" --once \
+              --virtual-budget-inr 10000 --virtual-flash-usd 1000 --usd-inr 90 \
+              --csv "reports/${chain}_new.csv" \
+              > "reports/${chain}_log.txt" 2>&1
+            rc=$?
+            set -e
+            printf 'exit_code=%s\n' "$rc" > "reports/${chain}_status.txt"
+            cat "reports/${chain}_log.txt"
+          done
+
+      - name: Restore earlier read-only report artifact if available
+        if: steps.window.outputs.active == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          mkdir -p previous
+          for runid in $(gh api "repos/${GH_REPO}/actions/workflows/crypto-paper-seven-days.yml/runs?status=success&per_page=12" \
+              --jq '.workflow_runs[].id' 2>/dev/null); do
+            if [ "$runid" = "${GITHUB_RUN_ID}" ]; then continue; fi
+            if gh run download "$runid" --repo "$GH_REPO" --name crypto-paper-cumulative --dir previous >/dev/null 2>&1; then
+              echo "Recovered past observations from successful run $runid"
+              break
+            fi
+          done
+          if [ ! -f previous/observations.csv ]; then echo "Starting a new cumulative report (no previous artifact found)"; fi
+
+      - name: Create conservative cumulative report
+        if: steps.window.outputs.active == 'true'
+        run: python3 crypto_paper_agent/cloud_report.py --previous previous --current reports --output reports
+
+      - name: Upload downloadable observations + seven-day cumulative report
+        if: steps.window.outputs.active == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-paper-cumulative
+          path: reports/
+          if-no-files-found: error
+          retention-days: 21
+          compression-level: 6
