@@ -8,8 +8,8 @@ This is an **observation tool**, not a trading bot. The original `ArbitrageExecu
 - Only public RPC read methods, limited to `eth_chainId`, `eth_blockNumber`, `eth_gasPrice` and whitelisted `eth_call` selectors.
 - Workflow GitHub token permissions: `contents: read`, `actions: read`. Checkout does not persist credentials.
 - Uses `ubuntu-latest` standard runner in **public GitHub repo**; this is free under GitHub's standard hosted runner policy. Public endpoints may fail/rate-limit. No paid third-party RPC.
-- End of collection: **2026-10-17 09:00 UTC**. After that date the scheduled workflow triggers but skips jobs' collection steps. Disable the workflow in GitHub Actions to eliminate skipped scheduling after the period.
-- Start of collection: **2026-10-10 09:00 UTC** (14:30 IST). Runs 4 times daily at 00:17, 06:17, 12:17, 18:17 UTC (05:47, 11:47, 17:47, 23:47 IST), subject to GitHub scheduler delays or omissions. Total expected observations: ~28 (up to 2 directional quotes per chain per run), if data is available.
+- End of collection: **2026-10-17 09:00 UTC**. The October 10–17 date-scoped cron limits scheduled invocations to those calendar dates. The UTC window guard prevents any observations outside this exact 2026 interval, including future years. Disable the workflow in GitHub Actions after reviewing the final report.
+- Start of collection: **2026-10-10 09:00 UTC** (14:30 IST). Runs 4 times daily during October 10–17 at 00:17, 06:17, 12:17, 18:17 UTC (05:47, 11:47, 17:47, 23:47 IST), subject to GitHub scheduler delays or omissions. Total expected observations: ~28 (up to 2 directional quotes per chain per run), if data is available.
 
 ## Reporting
 
