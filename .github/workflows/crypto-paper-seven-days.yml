@@ -10,7 +10,7 @@ on:
     - cron: '17 0,6,12,18 10-17 10 *'
 
 permissions:
-  contents: read
+  contents: write # publish sanitized public dashboard observations; never crypto transactions
   actions: read
 
 concurrency:
@@ -86,6 +86,61 @@ jobs:
       - name: Create conservative cumulative report
         if: steps.window.outputs.active == 'true'
         run: python3 crypto_paper_agent/cloud_report.py --previous previous --current reports --output reports
+
+
+      - name: Prepare safe browser dashboard snapshot
+        if: steps.window.outputs.active == 'true'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv,json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          src=Path('reports/observations.csv')
+          summ=json.loads(Path('reports/summary.json').read_text())
+          if summ.get('mode')!='READ_ONLY_NOT_EXECUTED' or summ.get('real_trades_executed')!=0 or summ.get('realized_pnl_inr')!='NOT_MEASURED':
+              raise ValueError('Refusing to publish anything resembling real executions')
+          observations=[]
+          if src.exists():
+              with src.open(newline='', encoding='utf-8') as fp:
+                  for row in csv.DictReader(fp):
+                      if (row.get('network') in ('polygon','bsc') and row.get('source')=='PUBLIC_RPC_READ_ONLY_SAME_BLOCK_RESERVES' and row.get('actual_transaction')=='NONE' and row.get('realized_profit_inr')=='NOT_MEASURED' and row.get('verdict') in ('SKIP_NOT_PROFITABLE_ENOUGH','SKIP_NO_LIQUIDITY','HYPOTHETICAL_CANDIDATE_NOT_EXECUTED')):
+                          observations.append(row)
+          if len(observations)>2500:
+              observations=observations[-2500:]
+          public_summary={
+              'mode':'READ_ONLY_NOT_EXECUTED','real_trades_executed':0,'realized_pnl_inr':'NOT_MEASURED',
+              'latest_observation_utc':summ.get('latest_observation_utc'),
+              'report_generated_utc':datetime.now(timezone.utc).isoformat(),
+              'total_hypothetical_route_quotes':len(observations),
+              'hypothetical_candidates_not_executed':sum(r.get('verdict')=='HYPOTHETICAL_CANDIDATE_NOT_EXECUTED' for r in observations),
+              'warning':'All results are historical snapshot estimates only; assumed USD/INR 90, gas 400000 units, Aave premium 9 bps and virtual flash loan USD 1000. No executions or profits.'
+          }
+          out={'schema_version':1,'mode':'READ_ONLY_NOT_EXECUTED','summary':public_summary,'observations':observations}
+          Path('reports/dashboard-data.json').write_text(json.dumps(out,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
+          print('Read-only quotes prepared:',len(observations))
+          PY
+
+      - name: Publish sanitized snapshot for responsive control dashboard
+        if: steps.window.outputs.active == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="repos/${GH_REPO}/contents/docs/dashboard-data.json"
+          old_sha=$(gh api "$target" --jq '.sha')
+          python3 - "$old_sha" <<'PYJSON'
+          import json,base64,sys
+          from pathlib import Path
+          payload={'message':'data: update read-only Polygon/BNB dashboard',
+                   'branch':'main',
+                   'content':base64.b64encode(Path('reports/dashboard-data.json').read_bytes()).decode(),
+                   'sha':sys.argv[1]}
+          Path('reports/dashboard-publish-request.json').write_text(json.dumps(payload))
+          PYJSON
+          gh api --method PUT "$target" --input reports/dashboard-publish-request.json --silent
 
       - name: Upload downloadable observations + seven-day cumulative report
         if: steps.window.outputs.active == 'true'
