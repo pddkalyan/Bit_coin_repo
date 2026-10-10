@@ -24,7 +24,26 @@ jobs:
           sha256sum fork_validation/test/ArbitrageExecutorOriginal.t.sol
           test "$(grep -c 'function test_PROOF' fork_validation/test/ArbitrageExecutorOriginal.t.sol)" -eq 3
           test "$(grep -c 'function test_T' fork_validation/test/ArbitrageExecutorOriginal.t.sol)" -eq 4
-      - name: Compile unmodified production Solidity and original proof harness
+      - name: Choose recent fork block using only test fixture (production Solidity unchanged)
+        env:
+          MAINNET_RPC: https://ethereum-rpc.publicnode.com
+        shell: bash
+        run: |
+          set -euo pipefail
+          newest="$(cast block-number --rpc-url "$MAINNET_RPC")"
+          sample="$((newest - 25))"
+          echo "Pinned historical block 25733035 is pruned by public RPC; test-only fork updated to $sample"
+          python3 - "$sample" <<'PY'
+          import sys
+          from pathlib import Path
+          p=Path('fork_validation/test/ArbitrageExecutorOriginal.t.sol')
+          data=p.read_text()
+          old='uint256 internal constant FORK_BLOCK    = 25733035;'
+          assert data.count(old)==1, 'original fixture constant mismatch'
+          p.write_text(data.replace(old,'uint256 internal constant FORK_BLOCK    = '+sys.argv[1]+';'))
+          # Only the test block changes. Production contract ends before TEST INFRASTRUCTURE.
+          PY
+      - name: Compile original production Solidity plus recent-fork test fixture
         run: forge build --root fork_validation -vv
       - name: Execute original and supplemental tests on Ethereum mainnet archive fork
         env:
