@@ -19,6 +19,7 @@ function validateData(payload){
 function listRows(){let v=state.rows.slice();if($('netFilter').value!=='all')v=v.filter(r=>r.network===$('netFilter').value);if($('verdictFilter').value!=='all')v=v.filter(r=>r.verdict===$('verdictFilter').value);v.sort((a,b)=>String(b.timestamp_utc).localeCompare(String(a.timestamp_utc)));return v;}
 function shortTime(s){const d=new Date(s);return Number.isNaN(d.getTime())?'—':d.toLocaleString('en-GB',{timeZone:'UTC',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false});}
 function unitPrice(v){const n=asNumber(v);if(n===null||n<=0)return 'Not sampled';return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:n<1?6:3});}
+function approxInr(v){const n=asNumber(v);return n>0?'≈₹'+(n*90).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'INR not available';}
 function renderPrices(){
  const cards=[];
  for(const c of ['polygon','bsc']){
@@ -26,7 +27,7 @@ function renderPrices(){
   const r=rows[0];
   if(!r){cards.push(`<div class="pricecard"><div class="price-title">${c==='polygon'?'Polygon · 1 WPOL':'BNB Chain · 1 WBNB'}</div><p class="price-meta">One-unit prices were not recorded in older samples. They will appear after the next successful cloud observation.</p></div>`);continue;}
   const timestamp=Date.parse(r.timestamp_utc),age=Number.isFinite(timestamp)?Math.max(0,(Date.now()-timestamp)/60000):null,ageLabel=age===null?'Unknown age':age<60?`${Math.floor(age)} min old`:`${(age/60).toFixed(1)} hours old`;
-  cards.push(`<div class="pricecard"><div class="price-title"><span>${c==='polygon'?'Polygon':'BNB Chain'} · 1 ${escapeHtml(r.unit_symbol||'wrapped token')}</span><span class="muted tiny">${escapeHtml(ageLabel)}</span></div><div class="price-figures"><div><span>Buy 1 on ${escapeHtml(r.buy_from)}</span><strong>${unitPrice(r.unit_buy_usd)}</strong></div><div><span>Sell 1 on ${escapeHtml(r.sell_to)}</span><strong>${unitPrice(r.unit_sell_usd)}</strong></div></div><div class="price-meta">Sampled ${escapeHtml(shortTime(r.timestamp_utc))} UTC · block ${escapeHtml(r.block)} · V2 pool quote including swap fee/impact; excludes gas/flash fee. Not a current executable order. Stablecoin ≈ USD.</div></div>`);
+  cards.push(`<div class="pricecard"><div class="price-title"><span>${c==='polygon'?'Polygon':'BNB Chain'} · 1 ${c==='polygon'?'WPOL':'WBNB'}</span><span class="muted tiny">${escapeHtml(ageLabel)}</span></div><div class="price-figures"><div><span>Buy 1 on ${escapeHtml(r.buy_from)}</span><strong>${unitPrice(r.unit_buy_usd)}</strong><small>${approxInr(r.unit_buy_usd)}</small></div><div><span>Sell 1 on ${escapeHtml(r.sell_to)}</span><strong>${unitPrice(r.unit_sell_usd)}</strong><small>${approxInr(r.unit_sell_usd)}</small></div></div><div class="price-meta">Sampled ${escapeHtml(shortTime(r.timestamp_utc))} UTC · block ${escapeHtml(r.block)} · V2 pool quote including swap fee/impact; excludes gas/flash fee. Not a current executable order. Stablecoin ≈ USD; INR uses assumed ₹90/USD, not live FX.</div></div>`);
  }
  $('priceTiles').innerHTML=cards.join('');
  $('priceFreshness').textContent='Historical pool snapshots';
@@ -37,7 +38,7 @@ function renderComparison(){
  if(!r){add('Status','No paper observations','No transactions');$('comparisonTitle').textContent='No route has been sampled.';}
  else{
   $('comparisonTitle').textContent=`${r.network==='polygon'?'Polygon':'BNB Chain'} · ${r.buy_from} → ${r.sell_to} · ${shortTime(r.timestamp_utc)} UTC · block ${r.block}`;
-  add('Asset',`1 ${r.unit_symbol||'wrapped token'}: buy ${unitPrice(r.unit_buy_usd)}, sell ${unitPrice(r.unit_sell_usd)}`);
+  add('Asset',`1 ${r.network==='polygon'?'WPOL':'WBNB'}: buy ${unitPrice(r.unit_buy_usd)}, sell ${unitPrice(r.unit_sell_usd)}`);
   add('Hypothetical flash loan',`${r.virtual_flash_usd} ${r.network==='polygon'?'USDC':'USDT'}`);
   add('Swap gross spread',`$${r.gross_spread_usd} (exchange fees included)`);
   add('Loan premium (modeled)',`$${r.estimated_flash_fee_usd}`);

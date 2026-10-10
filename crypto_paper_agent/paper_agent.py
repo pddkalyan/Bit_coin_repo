@@ -286,7 +286,7 @@ def run(args) -> list[dict]:
                 gas_units=args.gas_units, flash_premium_bps=args.flash_premium_bps,
                 extra_buffer_bps=args.extra_buffer_bps, min_profit_bps=args.min_profit_bps,
                 min_profit_usd=Decimal(args.min_profit_usd), usd_inr=usd_inr,
-                block_number=block, now=now, source=source, unit_symbol=config['native_symbol'],
+                block_number=block, now=now, source=source, unit_symbol=('WPOL' if chain == 'polygon' else 'WBNB'),
             ))
     write_csv(rows, Path(args.csv))
     print(f'[{chain}] block={block}, fee quote={gas_price_wei / 1e9:.4f} gwei, '
