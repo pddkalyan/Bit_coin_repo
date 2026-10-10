@@ -1,7 +1,7 @@
 
 'use strict';
 (() => {
-const DATA_URL='https://raw.githubusercontent.com/pddkalyan/Bit_coin_repo/main/docs/dashboard-data.json';
+const DATA_URL='https://raw.githubusercontent.com/pddkalyan/Bit_coin_repo/paper-data/docs/dashboard-data.json';
 const $=id=>document.getElementById(id);
 const state={rows:[],summary:null,chart:'all',wallet:null,loading:false,selectedRow:null};
 const asNumber=v=>{const n=Number(v);return Number.isFinite(n)?n:null};

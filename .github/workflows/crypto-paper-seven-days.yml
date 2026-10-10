@@ -6,11 +6,12 @@ on:
     paths:
       - '.github/workflows/crypto-paper-seven-days.yml'
   schedule:
-    # UTC, four read-only observations each day. GitHub schedule is best-effort.
-    - cron: '17 0,6,12,18 10-17 10 *'
+    # UTC, one observation every 5 minutes (best effort; GitHub may delay/skip).
+    # Seven-day date guard inside the job stops collection at 2026-10-17 09:00Z.
+    - cron: '*/5 * 10-17 10 *'
 
 permissions:
-  contents: write # publish sanitized public dashboard observations; never crypto transactions
+  contents: write # ONLY publishes read-only data to paper-data branch; never crypto transactions
   actions: read
 
 concurrency:
@@ -147,12 +148,12 @@ jobs:
         run: |
           set -euo pipefail
           target="repos/${GH_REPO}/contents/docs/dashboard-data.json"
-          old_sha=$(gh api "$target" --jq '.sha')
+          old_sha=$(gh api "$target?ref=paper-data" --jq '.sha')
           python3 - "$old_sha" <<'PYJSON'
           import json,base64,sys
           from pathlib import Path
           payload={'message':'data: update read-only Polygon/BNB dashboard',
-                   'branch':'main',
+                   'branch':'paper-data',
                    'content':base64.b64encode(Path('reports/dashboard-data.json').read_bytes()).decode(),
                    'sha':sys.argv[1]}
           Path('reports/dashboard-publish-request.json').write_text(json.dumps(payload))
