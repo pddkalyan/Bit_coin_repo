@@ -33,7 +33,8 @@ contract CorrectedExecutorForkTests is ArbitrageExecutorProof {
     function test_PATCH_completionEventContainsActualRequestHash() public {
         _setupCorrected();
         _whaleMovePrice(1_000 ether);
-        uint256 amount=20_000e6, deadline=block.timestamp+120;
+        uint256 amount=20_000e6;
+        uint256 deadline=block.timestamp+120;
         CandidateExecutor.Hop[] memory hops=_correctedHops(amount);
         bytes32 expectedHash=keccak256(abi.encode(USDC,amount,deadline,address(this),hops));
         VmEventCapture capture = VmEventCapture(address(vm));
