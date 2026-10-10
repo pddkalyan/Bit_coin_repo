@@ -45,13 +45,39 @@ jobs:
           PY
       - name: Compile original production Solidity plus recent-fork test fixture
         run: forge build --root fork_validation -vv
-      - name: Execute original and supplemental tests on Ethereum mainnet archive fork
+      - name: Run seven original tests (record failures without blocking supplemental suite)
+        id: original
+        continue-on-error: true
         env:
           MAINNET_RPC: https://ethereum-rpc.publicnode.com
+        run: forge test --root fork_validation --match-contract '^ArbitrageExecutorProof
+      - name: Test scope reminder
+        if: always()
         run: |
-          set -euo pipefail
-          forge test --root fork_validation --match-contract ArbitrageExecutorProof -vvv --gas-report
-          forge test --root fork_validation --match-contract ArbitrageExecutorIndependentForkTest -vvv --gas-report
+          echo "NO transactions on the actual Ethereum blockchain."
+          echo "Three positive proof tests manufacture a price dislocation in the fork."
+          echo "A passing fork test DOES NOT establish real net-after-gas profit."
+ -vvv --gas-report
+      - name: Run five independent fork safety checks
+        id: independent
+        continue-on-error: true
+        env:
+          MAINNET_RPC: https://ethereum-rpc.publicnode.com
+        run: forge test --root fork_validation --match-contract '^ArbitrageExecutorIndependentForkTest
+      - name: Test scope reminder
+        if: always()
+        run: |
+          echo "NO transactions on the actual Ethereum blockchain."
+          echo "Three positive proof tests manufacture a price dislocation in the fork."
+          echo "A passing fork test DOES NOT establish real net-after-gas profit."
+ -vvv --gas-report
+      - name: Fail overall if either test suite failed
+        if: always()
+        shell: bash
+        run: |
+          echo "Original suite: ${{ steps.original.outcome }}"
+          echo "Independent suite: ${{ steps.independent.outcome }}"
+          test "${{ steps.original.outcome }}" = "success" && test "${{ steps.independent.outcome }}" = "success"
       - name: Test scope reminder
         if: always()
         run: |
