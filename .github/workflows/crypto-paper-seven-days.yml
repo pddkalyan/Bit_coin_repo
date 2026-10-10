@@ -7,7 +7,7 @@ on:
       - '.github/workflows/crypto-paper-seven-days.yml'
   schedule:
     # UTC, four read-only observations each day. GitHub schedule is best-effort.
-    - cron: '17 0,6,12,18 * * *'
+    - cron: '17 0,6,12,18 10-17 10 *'
 
 permissions:
   contents: read
