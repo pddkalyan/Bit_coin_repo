@@ -48,6 +48,20 @@ jobs:
         if: steps.window.outputs.active == 'true'
         run: python3 -m unittest discover -s crypto_paper_agent -p 'test_*.py' -v
 
+      - name: Verify published UI script is syntactically valid and has no transaction APIs
+        if: steps.window.outputs.active == 'true'
+        shell: bash
+        run: |
+          node --check docs/dashboard.js
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('docs/dashboard.js').read_text()
+          for method in ('eth_sendTransaction','eth_sendRawTransaction','personal_sign','eth_sign','wallet_sendCalls','wallet_requestPermissions'):
+              assert method not in src, f'Unsafe wallet API in browser source: {method}'
+          assert 'eth_requestAccounts' in src
+          print('View-only wallet API check passed')
+          PY
+
       - name: Read public Polygon and BNB pool data (no trades)
         if: steps.window.outputs.active == 'true'
         shell: bash
