@@ -1,0 +1,85 @@
+name: Original ArbitrageExecutor mainnet fork validation - no funds
+on:
+  workflow_dispatch:
+  push:
+    branches: [fork-validation-20261010]
+    paths:
+      - fork_validation/**
+      - .github/workflows/arb-original-fork-validation.yml
+permissions:
+  contents: read
+jobs:
+  original-fork:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Confirm source and proof suite
+        run: |
+          set -euo pipefail
+          sha256sum fork_validation/test/ArbitrageExecutorOriginal.t.sol
+          test "$(grep -c 'function test_PROOF' fork_validation/test/ArbitrageExecutorOriginal.t.sol)" -eq 3
+          test "$(grep -c 'function test_T' fork_validation/test/ArbitrageExecutorOriginal.t.sol)" -eq 4
+      - name: Use recent Ethereum state by changing only test fixture fork block
+        env:
+          MAINNET_RPC: https://ethereum-rpc.publicnode.com
+        run: |
+          set -euo pipefail
+          newest="$(cast block-number --rpc-url "$MAINNET_RPC")"
+          sample="$((newest - 25))"
+          echo "Current fork block $sample; original fixed 25733035 requires archive access"
+          python3 - "$sample" <<'PY'
+          import sys
+          from pathlib import Path
+          p=Path('fork_validation/test/ArbitrageExecutorOriginal.t.sol')
+          data=p.read_text()
+          old='uint256 internal constant FORK_BLOCK    = 25733035;'
+          assert data.count(old)==1, 'test fixture changed unexpectedly'
+          p.write_text(data.replace(old,'uint256 internal constant FORK_BLOCK    = '+sys.argv[1]+';'))
+          PY
+      - name: Compile original production Solidity and test fixture
+        run: forge build --root fork_validation -vv
+      - name: Execute original seven mainnet fork proofs
+        id: originals
+        continue-on-error: true
+        env:
+          MAINNET_RPC: https://ethereum-rpc.publicnode.com
+        run: forge test --root fork_validation --match-contract ArbitrageExecutorProof -vvv --gas-report
+      - name: Execute five extra security fork tests
+        id: extras
+        continue-on-error: true
+        env:
+          MAINNET_RPC: https://ethereum-rpc.publicnode.com
+        run: forge test --root fork_validation --match-contract ArbitrageExecutorIndependentForkTest --match-test test_FORK -vvv --gas-report
+      - name: Diagnose Aave DAO listed Lido and EtherFi pool premiums and whale cycles
+        id: alternate
+        continue-on-error: true
+        env:
+          MAINNET_RPC: https://ethereum-rpc.publicnode.com
+        run: forge test --root fork_validation --match-contract AaveVerifiedMarketsCandidate --match-test test_CANDIDATE -vvv --gas-report
+      - name: Test corrected completion receipts, organic rejection, and after-gas estimate
+        id: corrected
+        continue-on-error: true
+        env:
+          MAINNET_RPC: https://ethereum-rpc.publicnode.com
+        run: forge test --root fork_validation --match-contract CorrectedExecutorForkTests --match-test test_PATCH -vvv --gas-report
+      - name: Preserve failure result and report scope
+        if: always()
+        env:
+          ORIGINAL_STATUS: ${{ steps.originals.outcome }}
+          EXTRA_STATUS: ${{ steps.extras.outcome }}
+          ALT_STATUS: ${{ steps.alternate.outcome }}
+          CORRECTED_STATUS: ${{ steps.corrected.outcome }}
+        run: |
+          echo "Original tests outcome: $ORIGINAL_STATUS"
+          echo "Extra tests outcome: $EXTRA_STATUS"
+          echo "Alternate Aave pools outcome: $ALT_STATUS"
+          echo "Corrected candidate outcome: $CORRECTED_STATUS"
+          echo "No wallet or mainnet transactions used"
+          echo "Original positive tests manipulate fork prices with a whale"
+          if [ "$ORIGINAL_STATUS" != "success" ] || [ "$EXTRA_STATUS" != "success" ] || [ "$ALT_STATUS" != "success" ] || [ "$CORRECTED_STATUS" != "success" ]; then exit 1; fi
