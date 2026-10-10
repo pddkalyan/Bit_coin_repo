@@ -73,9 +73,13 @@ jobs:
         env:
           ORIGINAL_STATUS: ${{ steps.originals.outcome }}
           EXTRA_STATUS: ${{ steps.extras.outcome }}
+          ALT_STATUS: ${{ steps.alternate.outcome }}
+          CORRECTED_STATUS: ${{ steps.corrected.outcome }}
         run: |
           echo "Original tests outcome: $ORIGINAL_STATUS"
           echo "Extra tests outcome: $EXTRA_STATUS"
+          echo "Alternate Aave pools outcome: $ALT_STATUS"
+          echo "Corrected candidate outcome: $CORRECTED_STATUS"
           echo "No wallet or mainnet transactions used"
           echo "Original positive tests manipulate fork prices with a whale"
-          if [ "$ORIGINAL_STATUS" != "success" ] || [ "$EXTRA_STATUS" != "success" ]; then exit 1; fi
+          if [ "$ORIGINAL_STATUS" != "success" ] || [ "$EXTRA_STATUS" != "success" ] || [ "$ALT_STATUS" != "success" ] || [ "$CORRECTED_STATUS" != "success" ]; then exit 1; fi
