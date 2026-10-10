@@ -49,6 +49,7 @@ function renderComparison(){
   add('Transaction hash','None','None');
  }
  $('comparisonBody').innerHTML=out.join('');
+ window.PaperPlanner?.select(r||null);
 }
 function renderTable(){
  const all=listRows(),limited=$('rowCount').value==='all'?all:all.slice(0,Number($('rowCount').value));

@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');const {calculate}=require('./paper-planner.js');
+const now=Date.parse('2026-10-10T13:00:00Z');
+const sample={source:'PUBLIC_RPC_READ_ONLY_SAME_BLOCK_RESERVES',actual_transaction:'NONE',realized_profit_inr:'NOT_MEASURED',virtual_flash_usd:'1000',gross_spread_usd:'30',estimated_gas_usd:'1.5',min_profit_usd:'5',timestamp_utc:'2026-10-10T12:59:00Z'};
+const c=(patch,opts,status)=>assert.equal(calculate({...sample,...patch},opts,now).status,status);
+c({}, {}, 'PAPER PASS');c({gross_spread_usd:'-10'},{},'REJECTED');
+c({}, {multiple:10,buffer:1000},'REJECTED');c({timestamp_utc:'2026-10-10T12:20:00Z'},{},'STALE');
+c({timestamp_utc:'2026-10-10T13:30:00Z'},{},'UNAVAILABLE');
+c({source:'SYNTHETIC_DEMO'},{},'UNAVAILABLE');c({realized_profit_inr:'100'},{},'UNAVAILABLE');
+c({gross_spread_usd:'bad'},{},'UNAVAILABLE');c({}, {multiple:11},'UNAVAILABLE');
+assert.equal(calculate(sample,{},now).net,16.1);
+console.log('10 planner assertions passed');
